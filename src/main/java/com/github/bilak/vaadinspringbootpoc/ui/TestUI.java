@@ -1,57 +1,99 @@
 package com.github.bilak.vaadinspringbootpoc.ui;
 
-import com.vaadin.data.fieldgroup.FieldGroup;
-import com.vaadin.data.util.ObjectProperty;
-import com.vaadin.data.util.PropertysetItem;
+import com.vaadin.annotations.Theme;
+import com.vaadin.annotations.Widgetset;
+import com.vaadin.navigator.Navigator;
+import com.vaadin.server.Page;
 import com.vaadin.server.VaadinRequest;
 import com.vaadin.spring.annotation.SpringUI;
-import com.vaadin.ui.FormLayout;
-import com.vaadin.ui.TextField;
-import com.vaadin.ui.UI;
+import com.vaadin.spring.navigator.SpringViewProvider;
+import com.vaadin.ui.Button;
+import com.vaadin.ui.ComponentContainer;
+import com.vaadin.ui.CssLayout;
+import com.vaadin.ui.Notification;
+import com.vaadin.ui.themes.ValoTheme;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * Created by lvasek on 06/10/15.
  */
+@Theme("valo")
 @SpringUI(path = "/testui")
-public class TestUI extends UI {
+@Widgetset(value = "com.github.bilak.vaadinspringbootpoc.widgetset.CustomWidgetset")
+public class TestUI extends AutoReloadUI {
 
     private static final Logger log = LoggerFactory.getLogger(TestUI.class);
 
-    ObjectProperty op_FirstName = new ObjectProperty("", String.class);
-    ObjectProperty op_LastName = new ObjectProperty("", String.class);
-    ObjectProperty op_Address = new ObjectProperty("", String.class);
+
+    @Autowired
+    private SpringViewProvider viewProvider;
+
+    MenuLayout root = new MenuLayout();
+    ComponentContainer viewContainer = root.getContentContainer();
+
+    CssLayout menu = new CssLayout();
+    CssLayout menuItemsLayout = new CssLayout();
+
+    private Navigator navigator;
+
 
     @Override
     protected void init(VaadinRequest vaadinRequest) {
-        PropertysetItem item = new PropertysetItem();
-        item.addItemProperty("firstName", op_FirstName);
-        item.addItemProperty("lastName", op_LastName);
 
-        final FieldGroup binder = new FieldGroup(item);
+        setContent(root);
+        root.setWidth("100%");
+        addStyleName(ValoTheme.UI_WITH_MENU);
 
-        FormLayout form = new FormLayout();
-
-        TextField tf_FirstName = new TextField("First name:", op_FirstName);
-        tf_FirstName.setRequired(true);
-        tf_FirstName.addValueChangeListener(valueChangeEvent -> log.debug("op_FirstName {}", op_FirstName.getValue()));
-        binder.bind(tf_FirstName, "firstName");
-        form.addComponent(tf_FirstName);
-
-        TextField tf_LastNAme = new TextField("Last name:", op_LastName);
-        tf_LastNAme.setRequired(true);
-        tf_LastNAme.addValueChangeListener(valueChangeEvent -> log.debug("op_LastName {}", op_LastName.getValue()));
-        binder.bind(tf_LastNAme, "lastName");
-        form.addComponent(tf_LastNAme);
-
-        TextField tf_Address = new TextField("Address: ", op_Address);
-        tf_Address.setRequired(true);
-        tf_Address.addValueChangeListener(valueChangeEvent -> log.debug("op_Address {}", op_Address.getValue()));
-        form.addComponent(tf_Address);
+        navigator = new Navigator(this, viewContainer);
+        navigator.addProvider(viewProvider);
+        navigator.setErrorView(SecuredView.class);
+        navigator.addView(SecuredView.VIEW_NAME, SecuredView.class);
 
 
-        setContent(form);
+        Button securedView = new Button("Secured View");
+        securedView.setHtmlContentAllowed(true);
+        securedView.setPrimaryStyleName(ValoTheme.MENU_ITEM);
+        securedView.addClickListener(new Button.ClickListener() {
+            @Override
+            public void buttonClick(Button.ClickEvent event) {
+                navigator.navigateTo(SecuredView.VIEW_NAME);
+            }
+        });
+        menuItemsLayout.addComponent(securedView);
+        menu.addComponent(menuItemsLayout);
+        root.addMenu(menu);
+
+        Button logout = new Button("Logout");
+        logout.addClickListener(new Button.ClickListener() {
+            @Override
+            public void buttonClick(Button.ClickEvent event) {
+                log.debug("Authentication before logout {}", SecurityContextHolder.getContext().getAuthentication());
+                Page.getCurrent().open("/logout", null);
+            }
+        });
+
+        Button securedResource = new Button("Secured Action");
+        securedResource.addClickListener(new Button.ClickListener() {
+            @Override
+            public void buttonClick(Button.ClickEvent event) {
+                log.debug("Authentication before secured {}", SecurityContextHolder.getContext().getAuthentication());
+                securedAction();
+            }
+        });
+
+        root.addComponent(logout);
+        root.addComponent(securedResource);
 
     }
+
+
+    @PreAuthorize("hasAnyRole('ADMIN')")
+    private void securedAction() {
+        Notification.show("Authorized action performed", Notification.Type.HUMANIZED_MESSAGE);
+    }
+
 }

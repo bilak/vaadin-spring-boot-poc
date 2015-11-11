@@ -1,0 +1,1 @@
+$wnd.com_github_bilak_vaadinspringbootpoc_widgetset_CustomWidgetset.runAsyncCallback2('Xcb(1573,1,b3d);_.uc=function Occ(){I$b((!B$b&&(B$b=new N$b),B$b),this.a.d)};EYd(Th)(2);\n//# sourceURL=com.github.bilak.vaadinspringbootpoc.widgetset.CustomWidgetset-2.js\n')
